@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Uzay-Zaman Simülasyonu</title>
+<style>
+  :root{
+    --bg:#04060d; --panel:rgba(10,16,30,.84); --line:rgba(120,180,255,.18);
+    --fg:#dbe7ff; --dim:#8aa0c8; --acc:#5fd0ff; --acc2:#ffd166; --bad:#ff6b6b; --good:#7CFFB2;
+    --r:10px; --sh:0 8px 28px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden;
+    font:13px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+  .pnl{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--sh);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);z-index:5}
+  .pnl h1,.pnl h2{margin:0 0 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700}
+  .row{display:flex;align-items:center;gap:6px}
+  .wrap{flex-wrap:wrap}
+  button,select,input{font:inherit;color:var(--fg);background:rgba(255,255,255,.05);
+    border:1px solid var(--line);border-radius:8px;padding:5px 8px;cursor:pointer}
+  button:hover,select:hover{background:rgba(95,208,255,.14);border-color:rgba(95,208,255,.4)}
+  button.on{background:rgba(95,208,255,.22);border-color:var(--acc);color:#eaf8ff}
+  button:active{transform:translateY(1px)}
+  .chk{display:flex;align-items:center;gap:5px;padding:4px 7px;border-radius:8px;
+    border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;user-select:none;font-size:12px}
+  .chk.on{border-color:var(--acc);background:rgba(95,208,255,.16)}
+  label.fld{display:grid;grid-template-columns:1fr auto;gap:1px 8px;margin:6px 0;font-size:12px;color:var(--dim)}
+  label.fld input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--acc);padding:0;background:none;border:0;height:18px;cursor:ew-resize}
+  label.fld b{color:var(--acc);font-weight:600;font-variant-numeric:tabular-nums}
+
+  #top{top:8px;left:8px;padding:7px 9px;display:flex;flex-direction:column;gap:6px;max-width:min(600px,calc(100vw - 16px))}
+  #top .t{display:flex;align-items:baseline;gap:8px}
+  #top .t strong{font-size:14px;letter-spacing:.02em}
+  #top .t span{font-size:11px;color:var(--dim)}
+  #tools{top:8px;right:8px;padding:7px;display:flex;flex-direction:column;gap:5px;width:196px}
+  #tools .grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  #tools button{font-size:12px;padding:6px 4px;display:flex;align-items:center;gap:5px;justify-content:flex-start}
+  #tools button i{width:10px;height:10px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 8px currentColor}
+  .sep{height:1px;background:var(--line);margin:1px 0}
+  #insp{top:8px;right:212px;padding:8px 9px;width:250px;max-height:calc(100vh - 150px);overflow:auto}
+  #insp .k{color:var(--dim)}
+  #insp .n{text-align:right;font-variant-numeric:tabular-nums}
+  #insp table{width:100%;border-collapse:collapse}
+  #insp td{padding:1.5px 0;font-size:12px}
+  .tag{display:inline-block;padding:0 6px;border-radius:99px;font-size:11px;
+    background:rgba(95,208,255,.16);border:1px solid rgba(95,208,255,.35)}
+  .note{font-size:11px;color:var(--dim);line-height:1.4;margin-top:6px;border-top:1px solid var(--line);padding-top:6px}
+  #bottom{left:8px;bottom:8px;padding:7px 9px;display:flex;flex-direction:column;gap:4px;max-width:min(640px,calc(100vw - 16px))}
+  #scaleBar{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim)}
+  #bar{height:8px;border:1px solid var(--acc);border-top:0;min-width:24px;max-width:220px}
+  #help{font-size:11.5px;color:var(--acc2)}
+  #stats{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+  #helpBtn{right:8px;bottom:8px;padding:8px 12px;z-index:6}
+  #toast{position:fixed;left:50%;top:78px;transform:translateX(-50%);z-index:20;padding:7px 12px;
+    background:rgba(20,30,50,.94);border:1px solid var(--line);border-radius:99px;font-size:12px;
+    opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:var(--sh);max-width:80vw;text-align:center}
+  #toast.show{opacity:1}
+  #helpBox{position:fixed;right:8px;bottom:52px;z-index:30;max-width:min(580px,calc(100vw - 16px));padding:12px 14px;display:none}
+  #helpBox.show{display:block}
+  #helpBox p{margin:6px 0;font-size:12px;color:var(--dim)}
+  #helpBox li{font-size:12px;color:var(--dim);margin:3px 0}
+  #helpBox ul{padding-left:18px;margin:4px 0}
+  kbd{background:rgba(255,255,255,.09);border:1px solid var(--line);border-radius:5px;padding:0 4px;font-size:11px}
+  @media (max-width:900px){
+    #top{max-width:calc(100vw - 16px)}
+    #tools{top:auto;bottom:8px;left:8px;right:8px;width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:6px;gap:4px}
+    #tools .grid{grid-template-columns:repeat(4,1fr);flex:1 1 100%;order:3}
+    #tools .sep{display:none}
+    #insp{position:fixed;top:120px;bottom:auto;right:8px;left:8px;width:auto;max-height:30vh;overflow:auto}
+    #bottom{bottom:104px;left:8px;right:8px;max-width:none}
+    #helpBtn{bottom:104px;right:8px}
+    #helpBox{bottom:150px}
+    #top .t span{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<!-- ============================== ÜST ÇUBUK ============================== -->
+<div class="pnl" id="top">
+  <div class="t"><strong data-i18n="title">Uzay-Zaman Simülasyonu</strong><span data-i18n="subtitle">Genel + özel görelilik</span></div>
+  <div class="row wrap">
+    <select id="preset" title="preset">
+      <option value="solar"   data-i18n="p_solar">Güneş Sistemi</option>
+      <option value="binary"  data-i18n="p_binary">Çift kara delik</option>
+      <option value="lensing" data-i18n="p_lensing">Işık sapması</option>
+      <option value="rel"     data-i18n="p_rel">Rölativistik uçuş</option>
+      <option value="lab"     data-i18n="p_lab">Boş laboratuvar</option>
+    </select>
+    <div class="row">
+      <button id="play" data-i18n="pause">Duraklat</button>
+      <div class="row" id="speeds">
+        <button data-s="0.25">0.25×</button><button data-s="1" class="on">1×</button><button data-s="4">4×</button>
+      </div>
+    </div>
+    <select id="lang"><option value="tr">TR</option><option value="en">EN</option><option value="de">DE</option></select>
+  </div>
+  <div class="row wrap">
+    <span class="chk on" data-t="rays"><i></i><span data-i18n="opt_rays">Işınları göster</span></span>
+    <span class="chk on" data-t="grid"><i></i><span data-i18n="opt_grid">Izgarayı göster</span></span>
+    <span class="chk"    data-t="vec"><i></i><span data-i18n="opt_vec">Hız vektörleri</span></span>
+    <span class="chk on" data-t="orbits"><i></i><span data-i18n="opt_orbits">Yörüngeler</span></span>
+    <span class="chk on" data-t="labels"><i></i><span data-i18n="opt_labels">Etiketler</span></span>
+    <span class="chk"    data-t="rel"><i></i><span data-i18n="opt_rel">Işık konisi</span></span>
+  </div>
+</div>
+
+<!-- ============================== ARAÇLAR ============================== -->
+<div class="pnl" id="tools">
+  <h2 data-i18n="tools">Araçlar</h2>
+  <div class="grid" id="toolGrid">
+    <button data-tool="select" class="on"><i style="background:#5fd0ff"></i><span data-i18n="t_select">Seç</span></button>
+    <button data-tool="bh"><i style="background:#b98cff"></i><span data-i18n="t_bh">Kara delik</span></button>
+    <button data-tool="star"><i style="background:#ffd166"></i><span data-i18n="t_star">Yıldız</span></button>
+    <button data-tool="planet"><i style="background:#7CFFB2"></i><span data-i18n="t_planet">Gezegen</span></button>
+    <button data-tool="photon"><i style="background:#fff3b0"></i><span data-i18n="t_photon">Test fotonu</span></button>
+    <button data-tool="beam"><i style="background:#ffe27a"></i><span data-i18n="t_beam">Işık demeti</span></button>
+    <button data-tool="erase"><i style="background:#ff6b6b"></i><span data-i18n="t_erase">Sil</span></button>
+    <button data-tool="follow"><i style="background:#c8d4ff"></i><span data-i18n="t_follow">Takip et</span></button>
+  </div>
+  <div class="sep"></div>
+  <div id="toolOpts"></div>
+  <div class="sep"></div>
+  <label class="fld"><span data-i18n="o_tilt">3B yörünge eğimi</span><b id="v_tilt">0°</b>
+    <input id="s_tilt" type="range" min="0" max="72" step="1" value="0"></label>
+  <label class="fld"><span data-i18n="o_sag">Izgara çökmesi</span><b id="v_sag">0.55</b>
+    <input id="s_sag" type="range" min="0" max="150" step="1" value="55"></label>
+</div>
+
+<!-- ============================== MÜFETTİŞ ============================== -->
+<div class="pnl" id="insp">
+  <h2 data-i18n="ins_title">Seçili cisim</h2>
+  <div id="insBody"></div>
+</div>
+
+<!-- ============================== ALT ============================== -->
+<div class="pnl" id="bottom">
+  <div id="scaleBar"><span id="barLbl">—</span><div id="bar"></div><span data-i18n="units">c = 1 su/s · G = 1</span></div>
+  <div id="stats">—</div>
+  <div id="help" data-i18n="helpShort">c aşılamaz; ufuk tek yönlü</div>
+</div>
+
+<div id="toast"></div>
+
+<button class="pnl" id="helpBtn" data-i18n="help">Yardım</button>
+
+<div class="pnl" id="helpBox">
+  <div class="row" style="justify-content:space-between"><h2 data-i18n="help">Yardım</h2>
+    <button id="helpClose" data-i18n="close">Kapat</button></div>
+  <ul>
+    <li data-i18n="h1">Fare/dokunma ile <b>sürükle</b> → kamera. <kbd>tekerlek</kbd>/<kbd>iki parmak</kbd> → zoom. Çift tık → seçili cismi ortalar.</li>
+    <li data-i18n="h2">Gezegen aracıyla yerleştirdikten sonra sarı oku <b>sürükleyerek</b> başlangıç hızını ver (0.995c'ye kadar). Müfettiş panelinden sonradan da değiştirebilirsin.</li>
+    <li data-i18n="h3"><b>c = 1 su/s</b> tavan: hiçbir cisim ışıktan hızlı gidemez. Kara deliğe yaklaşan cisim <b>kızarır, donar</b> ve merkeze <b>ulaşamaz</b> (ufuk tek yönlü). Yutulan kütlenin kara deliğe eklenir.</li>
+    <li data-i18n="h4">Uzak gözlemci saati <b>t</b> her yerde aynıdır; seçili cismin <b>yerel saati τ</b> dilatasyonla geri kalır.</li>
+    <li data-i18n="h5">Işınlar jeodezik çizilir: ışık <b>2×</b> yerçekimi hisseder (toplam sapma 4GM/c²). Kara deliğin görünür karanlık diski <b>3√3·M</b> yarıçapındaki gölgedir (foton küresi) — Einstein halkası bu kenarın iki görüntüsüdür.</li>
+    <li data-i18n="h6">Klavye: <kbd>Space</kbd> oynat/duraklat · <kbd>1..8</kbd> araç · <kbd>R</kbd> sıfırla · <kbd>Del</kbd> sil · <kbd>G</kbd> ızgara · <kbd>V</kbd> vektör · <kbd>H</kbd> yardım</li>
+  </ul>
+  <p data-i18n="h_note">Fizik notu: tam N-gövde (yalnız Newton) + birinci mertebeden GR düzeltmeleri — 3GM/c²r ivme terimi (günberi sapması), ISCO içi içe spiral ve ufuk yakalama, dτ/dt zaman dilatasyonu, z=1/√(1−2M/r) kırmızıya kayma. Izgara çökmesi yalnızca bir <i>koordinat görselleştirmesidir</i> (Schwarzschild benzeri logaritmik ölçek), gerçek eğrilik ölçüsü değildir.</p>
+</div>
+
+<script>
+'use strict';
+/* ==========================================================================
+   UZAY-ZAMAN SİMÜLASYONU — tek dosya, harici bağımlılık yok.
+   Bölümler: 1) i18n · 2) sabitler · 3) matematik · 4) cisimler
+             5) fizik · 6) çizim · 7) kamera/girdi · 8) arayüz · 9) döngü
+   ========================================================================== */
+
+/* ------------------------------- 1) i18n --------------------------------- */
+const I18N = {
+tr:{
+title:"Uzay-Zaman Simülasyonu",subtitle:"Genel + özel görelilik",
+p_solar:"Güneş Sistemi",p_binary:"Çift kara delik",p_lensing:"Işık sapması",p_rel:"Rölativistik uçuş",p_lab:"Boş laboratuvar",
+play:"Oynat",pause:"Duraklat",
+opt_rays:"Işınları göster",opt_grid:"Izgarayı göster",opt_vec:"Hız vektörleri",opt_orbits:"Yörüngeler",
+opt_labels:"Etiketler",opt_rel:"Işık konisi",
+tools:"Araçlar",t_select:"Seç",t_bh:"Kara delik",t_star:"Yıldız",t_planet:"Gezegen",t_photon:"Test fotonu",
+t_beam:"Işık demeti",t_erase:"Sil",t_follow:"Takip et",
+o_tilt:"3B yörünge eğimi",o_sag:"Izgara çökmesi",o_mass:"Kütle (M)",o_radius:"Görsel yarıçap",o_temp:"Sıcaklık",
+o_spread:"Demet yayılımı",o_rate:"Atış hızı",o_count:"Foton/atış",o_dir:"Atış yönü",o_exag:"Günberi sapması",
+ins_title:"Seçili cisim",ins_none:"Seçim yok — bir cisme dokun.",
+i_type:"Tür",i_mass:"Kütle",i_r:"Yarıçap",i_v:"Hız",i_tau:"Yerel saat (τ)",i_t:"Uzak gözlemci (t)",
+i_dil:"Dilatasyon dτ/dt",i_z:"Kırmızı kayma z",i_near:"En yakın kütle",i_a:"Günberi sapması",i_a2:"sıkıştırılmış ölçek",
+i_del:"Cismi sil",i_editing:"Düzenle",i_none2:"—",i_gamma:"Boy kısalması L/L₀",
+y_bh:"Kara delik",y_star:"Yıldız",y_planet:"Gezegen",y_photon:"Foton",y_beam:"Işık kaynağı",
+units:"c = 1 su/s · G = 1 (GM = M) · uzunluk = su",
+stats:"{n} cisim · {p} foton · {f} fps · {s}",
+helpShort:"c aşılamaz; ufuk tek yönlü — bir cisim merkeze hiçbir zaman ulaşamaz.",
+help:"Yardım",close:"Kapat",
+shadow:"gölge",event:"olay ufku",sphere:"foton küresi",freezing:"DONUYOR — ufka yapıştı",
+spiralizing:"İÇE SPİRAL — yutulacak",strong:"GÜÇLÜ ALAN",
+following:"KAMERA takipte",paused:"DURAKLATILDI",
+h1:"Fare/dokunma ile <b>sürükle</b> → kamera. <kbd>tekerlek</kbd>/<kbd>iki parmak</kbd> → zoom. Çift tık → seçili cismi ortalar.",
+h2:"Gezegen aracıyla yerleştirdikten sonra sarı oku <b>sürükleyerek</b> başlangıç hızını ver (0.995c'ye kadar). Müfettiş panelinden sonradan da değiştirebilirsin.",
+h3:"<b>c = 1 su/s</b> tavan: hiçbir cisim ışıktan hızlı gidemez. Kara deliğe yaklaşan cisim <b>kızarır, donar</b> ve merkeze <b>ulaşamaz</b> (ufuk tek yönlü). Yutulan kütlenin kara deliğe eklenir.",
+h4:"Uzak gözlemci saati <b>t</b> her yerde aynıdır; seçili cismin <b>yerel saat τ</b> dilatasyonla geri kalır.",
+h5:"Işınlar jeodezik çizilir: ışık <b>2×</b> yerçekimi hisseder (toplam sapma 4GM/c²). Kara deliğin karanlık diski <b>3√3·M</b> yarıçapındaki gölgedir (foton küresi) — Einstein halkası bu kenarın iki görüntüsüdür.",
+h6:"Klavye: <kbd>Space</kbd> oynat/duraklat · <kbd>1..8</kbd> araç · <kbd>R</kbd> sıfırla · <kbd>Del</kbd> sil · <kbd>G</kbd> ızgara · <kbd>V</kbd> vektör · <kbd>H</kbd> yardım",
+h_note:"Fizik notu: tam N-gövde (yalnız Newton) + birinci mertebeden GR düzeltmeleri — 3GM/c²r ivme terimi (günberi sapması), ISCO içi içe spiral ve ufuk yakalama, dτ/dt zaman dilatasyonu, z=1/√(1−2M/r) kırmızıya kayma. Izgara çökmesi yalnızca bir <i>koordinat görselleştirmesidir</i> (Schwarzschild benzeri logaritmik ölçek), gerçek eğrilik ölçüsü değildir.",
+m_eaten:"{n} yutuldu → kara delik büyüdü",m_clamp:"Hız c sınırına kırpıldı",m_unstable:"Fizik kararsız: cisim sayısını azalt",
+m_sel:"Seçim yok",m_burst:"Işık demeti ateşlendi",m_sel2:"{n} seçildi"
+},
+en:{
+title:"Spacetime Simulation",subtitle:"General + special relativity",
+p_solar:"Solar System",p_binary:"Binary Black Holes",p_lensing:"Light Bending",p_rel:"Relativistic Flyby",p_lab:"Empty Lab",
+play:"Play",pause:"Pause",
+opt_rays:"Show rays",opt_grid:"Show grid",opt_vec:"Velocity vectors",opt_orbits:"Orbits",
+opt_labels:"Labels",opt_rel:"Light cone",
+tools:"Tools",t_select:"Select",t_bh:"Black hole",t_star:"Star",t_planet:"Planet",t_photon:"Test photon",
+t_beam:"Light beam",t_erase:"Delete",t_follow:"Follow",
+o_tilt:"3D orbit tilt",o_sag:"Grid sag",o_mass:"Mass (M)",o_radius:"Visual radius",o_temp:"Temperature",
+o_spread:"Beam spread",o_rate:"Fire rate",o_count:"Photons/burst",o_dir:"Fire direction",o_exag:"Precession",
+ins_title:"Selected body",ins_none:"Nothing selected — tap a body.",
+i_type:"Type",i_mass:"Mass",i_r:"Radius",i_v:"Speed",i_tau:"Local clock (τ)",i_t:"Distant clock (t)",
+i_dil:"Dilution dτ/dt",i_z:"Redshift z",i_near:"Nearest mass",i_a:"Perihelion precession",i_a2:"compressed scale",
+i_del:"Delete body",i_editing:"Edit",i_none2:"—",i_gamma:"Length contraction L/L₀",
+y_bh:"Black hole",y_star:"Star",y_planet:"Planet",y_photon:"Photon",y_beam:"Light source",
+units:"c = 1 su/s · G = 1 (GM = M) · length = su",
+stats:"{n} bodies · {p} photons · {f} fps · {s}",
+helpShort:"c cannot be exceeded; the horizon is one-way — no body ever reaches the centre.",
+help:"Help",close:"Close",
+shadow:"shadow",event:"event horizon",sphere:"photon sphere",freezing:"FREEZING — stuck on the horizon",
+spiralizing:"SPIRALING IN — to be swallowed",strong:"STRONG FIELD",
+following:"camera following",paused:"PAUSED",
+h1:"Drag to pan. Wheel / pinch to zoom. Double-tap to centre the selected body.",
+h2:"After placing a planet, <b>drag the yellow arrow</b> to set its launch velocity (up to 0.995c). Editable later in the inspector too.",
+h3:"<b>c = 1 su/s</b> is a hard ceiling: nothing outruns light. A body near a black hole <b>reddens and freezes</b> and can <b>never reach the centre</b> (the horizon is one-way). Swallowed mass is added to the hole.",
+h4:"The distant clock <b>t</b> is the same everywhere; the selected body's <b>local clock τ</b> lags by dilation.",
+h5:"Rays follow geodesics: light feels <b>2×</b> the gravity (total deflection 4GM/c²). The dark disc is the shadow of radius <b>3√3·M</b> (photon sphere) — the Einstein ring is the twin image of that edge.",
+h6:"Keys: <kbd>Space</kbd> play/pause · <kbd>1..8</kbd> tool · <kbd>R</kbd> reset · <kbd>Del</kbd> delete · <kbd>G</kbd> grid · <kbd>V</kbd> vectors · <kbd>H</kbd> help",
+h_note:"Physics: full N-body (Newton only) plus first-order GR corrections — the 3GM/c²r acceleration term (perihelion precession), ISCO inspiral and horizon capture, dτ/dt time dilation, z=1/√(1−2M/r) redshift. The grid sag is only a <i>coordinate visualisation</i> (Schwarzschild-like logarithmic scale), not a curvature measurement.",
+m_eaten:"{n} swallowed → black hole grew",m_clamp:"Speed clamped to c",m_unstable:"Unstable physics: reduce the body count",
+m_sel:"No selection",m_burst:"Light burst fired",m_sel2:"{n} selected"
+},
+de:{
+title:"Raum-Zeit-Simulation",subtitle:"Allgemeine + spezielle Relativität",
+p_solar:"Sonnensystem",p_binary:"Doppel-Schwarze Löcher",p_lensing:"Lichtablenkung",p_rel:"Relativistischer Vorbeiflug",p_lab:"Leeres Labor",
+play:"Start",pause:"Pause",
+opt_rays:"Strahlen zeigen",opt_grid:"Gitter zeigen",opt_vec:"Geschwindigkeitsvektoren",opt_orbits:"Bahnen",
+opt_labels:"Beschriftung",opt_rel:"Lichtkegel",
+tools:"Werkzeuge",t_select:"Auswahl",t_bh:"Schwarzes Loch",t_star:"Stern",t_planet:"Planet",t_photon:"Testphoton",
+t_beam:"Lichtstrahl",t_erase:"Löschen",t_follow:"Folgen",
+o_tilt:"3D-Bahnneigung",o_sag:"Gitterdurchbiegung",o_mass:"Masse (M)",o_radius:"Sichtbarer Radius",o_temp:"Temperatur",
+o_spread:"Strahlfächerung",o_rate:"Feuerrate",o_count:"Photonen/Schuss",o_dir:"Feuerrichtung",o_exag:"Periheldrift",
+ins_title:"Gewählter Körper",ins_none:"Nichts gewählt — Körper antippen.",
+i_type:"Typ",i_mass:"Masse",i_r:"Radius",i_v:"Geschwindigkeit",i_tau:"Lokale Uhr (τ)",i_t:"Ferne Uhr (t)",
+i_dil:"Dilatation dτ/dt",i_z:"Rotverschiebung z",i_near:"Nächste Masse",i_a:"Periheldrift",i_a2:"komprimierter Maßstab",
+i_del:"Körper löschen",i_editing:"Bearbeiten",i_none2:"—",i_gamma:"Längenkontraktion L/L₀",
+y_bh:"Schwarzes Loch",y_star:"Stern",y_planet:"Planet",y_photon:"Photon",y_beam:"Lichtquelle",
+units:"c = 1 su/s · G = 1 (GM = M) · Länge = su",
+stats:"{n} Körper · {p} Photonen · {f} fps · {s}",
+helpShort:"c ist unüberwindbar; der Horizont ist einseitig — kein Körper erreicht je das Zentrum.",
+help:"Hilfe",close:"Schließen",
+shadow:"Schatten",event:"Ereignishorizont",sphere:"Photonensphäre",freezing:"EINFRIEREND — am Horizont haftend",
+spiralizing:"EINSPIRALEND — wird verschluckt",strong:"STARKES FELD",
+following:"Kamera folgt",paused:"PAUSE",
+h1:"Ziehen zum Verschieben. Mausrad / Pinch zum Zoomen. Doppelklick zentriert den gewählten Körper.",
+h2:"Nach dem Setzen eines Planeten: <b>gelben Pfeil ziehen</b> für die Startgeschwindigkeit (bis 0.995c). Auch später im Inspektor änderbar.",
+h3:"<b>c = 1 su/s</b> ist eine harte Grenze: nichts ist schneller als Licht. Ein Körper nahe dem Loch <b>rötet sich und friert ein</b> und erreicht das <b>Zentrum nie</b> (der Horizont ist einseitig). Verschluckte Masse wächst dem Loch zu.",
+h4:"Die ferne Uhr <b>t</b> ist überall gleich; die <b>lokale Uhr τ</b> des Körpers bleibt durch Dilatation zurück.",
+h5:"Strahlen folgen Geodäten: Licht spürt die <b>2-fache</b> Gravitation (Ablenkung 4GM/c²). Die dunkle Scheibe ist der Schatten mit Radius <b>3√3·M</b> (Photonensphäre) — der Einsteinring ist das Zwillingsbild dieses Randes.",
+h6:"Tasten: <kbd>Leertaste</kbd> Start/Pause · <kbd>1..8</kbd> Werkzeug · <kbd>R</kbd> Reset · <kbd>Entf</kbd> löschen · <kbd>G</kbd> Gitter · <kbd>V</kbd> Vektoren · <kbd>H</kbd> Hilfe",
+h_note:"Physik: volles N-Körper (nur Newton) plus Korrekturen erster Ordnung — der 3GM/c²r-Beschleunigungsterm (Periheldrift), ISCO-Spirale und Horizont-Einfang, dτ/dt-Zeitdilatation, z=1/√(1−2M/r)-Rotverschiebung. Die Gitterdurchbiegung ist nur eine <i>Koordinaten-Darstellung</i> (Schwarzschild-artige Log-Skala), keine Krümmungsmessung.",
+m_eaten:"{n} verschluckt → Schwarzes Loch wuchs",m_clamp:"Geschwindigkeit auf c begrenzt",m_unstable:"Instabile Physik: Körperzahl verringern",
+m_sel:"Keine Auswahl",m_burst:"Lichtblitz gesendet",m_sel2:"{n} ausgewählt"
+}};
+let LANG = "tr";
+const t = k => (I18N[LANG][k] !== undefined ? I18N[LANG][k] : (I18N.en[k] !== undefined ? I18N.en[k] : k));
+function tf(k, v){ let s = t(k); if(v) for(const a in v) s = s.split("{"+a+"}").join(v[a]); return s; }
+
+/* ------------------------------ 2) SABİTLER ------------------------------ */
+/* Birim seçimi: c = 1 ve G = 1 ⇒ gravitasyonel parametre GM/c² = M olur, böylece
+   rs=2M, rph=3M, ISCO=6M gibi Schwarzschild yarıçapları doğrudan kütleye bağlı çıkar. */
+const C_LIGHT   = 1;                    // ışık hızı (su/s) — hiçbir cisim bunu aşamaz
+const G_GRAV    = 1;                    // F = G·M₁M₂/r²
+const V_MAX     = 0.995 * C_LIGHT;      // sayısal güvenlik tavanı (fizikî limit tam olarak c)
+const RS     = M => 2 * M;                             // Schwarzschild yarıçapı rs = 2GM/c²
+const RPH    = M => 3 * M;                             // foton küresi: kararsız null geodezik 3GM/c²
+const ISCO   = M => 6 * M;                             // en iç kararlı yörünge 6GM/c²
+const SHADOW = M => 3 * Math.sqrt(3) * M;              // BH gölgesi = 2.60·rs (kritik parametre)
+const BASE_RATE = 800;                 // 1× hızda duvar saniyesi başına geçen su (simülasyon birimi)
+const SIM_SEC   = 100;                 // 1 "simülasyon saniyesi" = 100 su (ışın yoğunluğu ölçeği)
+const LIGHT_F   = 2;                   // ışık 2× yerçekimi hisseder ⇒ sapma 4GM/c² (ışık 2 katına çıkar)
+const MAX_SUB   = 24;                  // kare başına alt-adım tavanı — 60fps kalkanı, mercekleme/ufuk korunur
+const TRAIL_MAX = 620;                 // cisim başına yörünge izi noktası
+const PH_LIFE   = 210;                 // foton ömrü (su) — ışın hızı = 1 su/s
+const PH_TRAIL  = 70;                  // foton başına saklanan iz noktası
+const SOFT_REL  = 0.02;                // yumuşatma: yalnız r→0'da tekilliği kırar
+/* Izgara çökmesi (koordinat görselleştirmesi): genişlik = SAG_W·√M·hücre,
+   derinlik = SAG_D·√M·hücre·sag. √M sayesinde 10⁻⁶…10³ kütleler aynı karede okunur. */
+const SAG_W = 9.0, SAG_D = 0.55;
+const SPIN_K = 0.55;                   // hafif görsel çerçeve sürüklenmesi katsayısı
+
+/* ----------------------------- 3) MATEMATİK ------------------------------ */
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp  = (a,b,t) => a + (b-a)*t;
+const TAU   = Math.PI*2;
+function fmt(n, d){
+  if(!isFinite(n)) return "∞";
+  if(n === 0) return "0";
+  const a = Math.abs(n);
+  if(a >= 1e6 || a < 1e-4){ const e = Math.floor(Math.log10(a)); return (n/Math.pow(10,e)).toFixed(2)+"e"+e; }
+  d = (d === undefined) ? (a >= 100 ? 0 : a >= 10 ? 1 : 2) : d;
+  return n.toFixed(d);
+}
+function fmtT(su){
+  const a = Math.abs(su);
+  if(a >= 1e5) return (su/1e3).toFixed(1)+"k su";
+  if(a >= 100) return su.toFixed(0)+" su";
+  if(a >= 1)   return su.toFixed(2)+" su";
+  return su.toFixed(3)+" su";
+}
+const degStr = d => (Math.abs(d) >= 10 ? d.toFixed(0) : d.toFixed(2)) + "°";
+function tempColor(k){                        // kara-cisim benzeri sıcaklık→renk
+  k = clamp(k, 800, 30000);
+  const u = k/100;
+  let r,g,b;
+  if(u <= 66){ r = 255; g = 99.47*Math.log(u) - 161.12; } else { r = 329.7*Math.pow(u-60,-0.1332); g = 288.12*Math.pow(u-60,-0.0755); }
+  if(u >= 66) b = 255; else if(u <= 19) b = 0; else b = 138.52*Math.log(u-10) - 305.04;
+  return [clamp(r,0,255)|0, clamp(g,0,255)|0, clamp(b,0,255)|0];
+}
+const rgba = (c,a) => `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+function redden(c, k){                        // k: 0 normal → 1 tam kırmızı ve sönük
+  k = clamp(k,0,1);
+  const lum = 0.299*c[0] + 0.587*c[1] + 0.114*c[2];
+  return [ lerp(c[0], clamp(lum*1.30+80,0,255), k)|0,
+           lerp(c[1], clamp(lum*0.28,0,255),   k)|0,
+           lerp(c[2], clamp(lum*0.15,0,255),   k)|0 ];
+}
+
+/* ------------------------------ 4) CİSİMLER ------------------------------ */
+let uid = 1;
+const PAL = {
+  mercury:[150,146,140], venus:[214,168,110], earth:[86,160,235], mars:[214,110,72],
+  jupiter:[214,182,140], saturn:[226,204,140], uranus:[130,206,220], neptune:[86,110,230] };
+function mkBody(type, x, y, o){
+  o = o || {};
+  const b = {
+    id: uid++, type, x, y, z: o.z || 0, vx:o.vx||0, vy:o.vy||0,
+    M: (o.M !== undefined ? o.M : (type === 'beam' ? 0 : 1)),   // ışık kaynağı kütlesizdir
+    Mtarget: (o.M !== undefined ? o.M : (type === 'beam' ? 0 : 1)),
+    M0: 1, rad: o.rad !== undefined ? o.rad : 2, rad0: 2,
+    color: o.color || [140,190,255], name: o.name || "",
+    tau: 0, alive: true, eaten: false, frozen: 0, dil: 1, zred: 1,  // zred = kırmızı kayma
+    trail: [], spin: o.spin !== undefined ? o.spin : (type === 'bh' ? 0.35 : 0),
+    spread: o.spread !== undefined ? o.spread : 0.25,
+    rate:  o.rate  !== undefined ? o.rate  : 6,
+    count: o.count !== undefined ? o.count : 3,
+    dir:   o.dir   !== undefined ? o.dir   : 0,
+    zAmp: 0, zNode: 0, acc: 0,
+    fixed: !!o.fixed                                   // ← "uzaktaki sabit kaynak": kinematik, düşmez
+  };
+  b.M0 = b.M; b.rad0 = b.rad;
+  if(type === 'star') b.color = tempColor(o.temp || 5200);
+  if(type === 'bh'){ b.color = [186,142,255]; b.rad = Math.max(2.5, 6*Math.cbrt(b.M)); b.rad0 = b.rad; }
+  return b;
+}
+let bodies = [], photons = [], clock = 0;
+let selected = null, selVelArm = false, selVelBody = null;
+
+/* Baskın (en güçlü çekici) kütleyi bul:  M/r² büyüklüğü kazanır — "en yakın" değil,
+   çünkü hafif bir cisim ağır bir kara deliğin yanından geçerken baskın değiştirilmemeli.
+   Fizik (zaman dilatasyonu, ufuk, ISCO) ve görsel uyarılar hep bu tek kaynağı kullanır. */
+function dominant(b){
+  let best = 0, hx = 0, hy = 0, host = null, M = 0, r = Infinity;
+  for(let i=0;i<bodies.length;i++){
+    const o = bodies[i];
+    if(o === b || !o.alive || o.eaten || o.fixed || o.M <= 0) continue;
+    const dx = o.x-b.x, dy = o.y-b.y, r2 = dx*dx+dy*dy;
+    if(r2 < 1e-12) continue;
+    const p = o.M/r2;                       // ← çekim şiddeti
+    if(p > best){ best = p; M = o.M; r = Math.sqrt(r2); hx = o.x; hy = o.y; host = o; }
+  }
+  return { M, r, hx, hy, host };
+}
+
+/* ------------------------------- 5) FİZİK -------------------------------- */
+/* Merkezî ivme:  a = -G·M/r²  +  1. mertebe GR düzeltmesi.
+   GR terimi:  -3·exag·G·M·h²/r⁴   (h = cismin özgül açısal momentumu, yani r×v).
+   Binet denklemiyle:  u'' + (1 − 6·exag·M·u₀)u = M/h²  ⇒  ω ≈ 1 − 3·exag·M/a
+   ⇒ yörünge başına sapma  6π·exag·GM/(c²a(1−e²))  — Merkür'ün ünlü 43"/yüzyıl sonucunun
+   tam biçimi. (exag = 1 ise tamamen fiziksel; preset'ler görünürlük için abartır ve etiketler.)
+   Not: yaygın olarak yazılan −GM/r²(1+3GM/c²r) ifadesi 3π verir; 1/r⁴'lü biçim gereklidir. */
+function gravityAt(px, py, skip, exag){
+  let ax = 0, ay = 0;
+  for(let i=0;i<bodies.length;i++){
+    const o = bodies[i];
+    if(o === skip || !o.alive || o.eaten || o.fixed || o.M <= 0) continue;
+    const dx = o.x-px, dy = o.y-py;
+    let r2 = dx*dx+dy*dy;
+    if(r2 < 1e-12) continue;
+    let r = Math.sqrt(r2);
+    const soft = SOFT_REL * (o.M + (skip ? skip.M : 0));    // yalnızca çok yakın geçişte
+    if(r < soft) r = soft;
+    r2 = r*r;
+    const aN = G_GRAV * o.M / r2;                            // Newton
+    let a = aN;
+    if(exag > 0 && skip){
+      const h2 = (dx*skip.vy - dy*skip.vx);                  // r × v
+      let g = 3*exag*G_GRAV*o.M*h2*h2/(r2*r2);
+      if(g > aN) g = aN;                                     // ← yakın geçişte kuvveti iki kat ile sınırla
+      a = aN + g;
+    }
+    ax += a*dx/r; ay += a*dy/r;
+  }
+  return [ax, ay];
+}
+/* alt-adım sayısı: en hızlı/yakın cismin dinamik zamanına göre uyarlanır (sabit adım patlatır) */
+function substepsFor(dt){
+  let need = 1;
+  for(const b of bodies){
+    if(!b.alive || b.eaten) continue;
+    const d = dominant(b);
+    if(d.M <= 0) continue;
+    const v = Math.hypot(b.vx, b.vy);
+    const vesc = Math.sqrt(2*G_GRAV*d.M/d.r);
+    need = Math.max(need, dt / (0.02 * d.r / Math.max(v, vesc, 1e-6)));   // ← yörüngede %2 adım
+  }
+  return clamp(Math.ceil(need), 1, MAX_SUB);
+}
+
+/* Fizik dışı cisim: ışık kaynağı (kütlesiz kinematik), sabit uzak kaynak (fixed),
+   yutulmuş donmuş cisim. Bunlara ne kuvvet ne de sürüklenme uygulanır. */
+const isFree = b => !b.alive || b.fixed || b.type === 'beam' || b.eaten;
+const _ax = [], _ay = [];                             // ivme tamponu (alt-adım başına yeniden ayırma yok)
+
+function integrate(h){
+  const exag = state.precess, n = bodies.length;
+  if(_ax.length < n){ _ax.length = n; _ay.length = n; }
+
+  /* --- 1) TÜM ivmeler tek anda, aynı (eski) konumlarda hesaplanır.
+         Sıralı (Gauss-Seidel) hesap ikili sistemlerde enerjiyi monotonik artırıp
+         yörüngeleri dağıtıyordu; eşzamanlı (Jacobi) hesap leapfrog'un symplectic
+         özelliğini korur. --- */
+  for(let i=0;i<n;i++){
+    const b = bodies[i];
+    if(isFree(b)){ _ax[i] = 0; _ay[i] = 0; continue; }
+    const a = gravityAt(b.x, b.y, b, exag);
+    _ax[i] = a[0]; _ay[i] = a[1];
+  }
+  /* --- 2) kick–drift (yarı vuruş + eşzamanlı konum güncellemesi) --- */
+  for(let i=0;i<n;i++){
+    const b = bodies[i];
+    if(isFree(b)) continue;
+    b.vx += _ax[i]*h*0.5; b.vy += _ay[i]*h*0.5;
+    b.x  += b.vx*h;       b.y += b.vy*h;
+  }
+  /* --- 3) GR katkıları, zaman dilatasyonu, ufuk, yörünge izi --- */
+  for(let i=0;i<n;i++){
+    const b = bodies[i];
+    if(isFree(b)){
+      if(b.alive && (b.fixed || b.type === 'beam')){      // sabit cisimler yalnızca iz toplar
+        b.trail.push({x:b.x, y:b.y, z:b.z});
+        if(b.trail.length > TRAIL_MAX) b.trail.shift();
+      }
+      continue;
+    }
+    const d = dominant(b);
+    let dil = 1, z = 1;
+    if(d.M > 0 && d.r > 1e-6){
+      const r = d.r, f = clamp((ISCO(d.M) - r)/ISCO(d.M), 0, 1);
+      if(f > 0){
+        /* ISCO içinde yörünge kararsızdır: cisim açısal momentumunu yitirip içe spiraller.
+           Yalnızca GÖRELİ hız sönümlenir; kaybedilen momentum kütlenin ters oranıyla ev
+           sahibine aktarılır → lineer momentum korunur, kara delik savrulmaz. */
+        const host = d.host;
+        const rvx = b.vx - host.vx, rvy = b.vy - host.vy;
+        const k = 1 - 1.5*f*f*h;                        // ← sönüm katsayısı (yalnız ISCO içinde)
+        b.vx = host.vx + rvx*k;  b.vy = host.vy + rvy*k;
+        const q = b.M/host.M;
+        host.vx += (1-k)*rvx*q;  host.vy += (1-k)*rvy*q;
+      }
+      /* zaman dilatasyonu: dτ/dt = √(1 − 2M/r − (1−2M/r)v²) */
+      const u = Math.max(1e-5, 1 - 2*d.M/r);
+      const v2 = b.vx*b.vx + b.vy*b.vy;
+      dil = Math.sqrt(Math.max(0, u - u*v2));
+      z   = 1/Math.sqrt(Math.max(1e-5, u));
+    }
+    b.dil = dil; b.zred = z;  // b.z yalnızca 3B görsel yükseklik içindir
+    b.tau += h * dil;                                    // ← cisim kendi saatini τ ile sayar
+
+    const sp = Math.hypot(b.vx, b.vy);
+    if(sp > V_MAX){ const k = V_MAX/sp; b.vx *= k; b.vy *= k; ui.clampFlash(); }
+
+    /* Ufuk: r < 2GM/c² → yakalandı. Konuk kütlesi ev sahibinden ağır olmamalı (yoksa iki
+       cisim birbirini yutar). Cisim görsel olarak donup kızarır, merkeze GİREMEZ. */
+    if(d.M > 0 && d.M >= b.M*0.999 && d.r < RS(d.M)*1.02){ eat(b, d.host); continue; }
+    if(b.zAmp) b.z = b.zAmp*Math.sin(Math.atan2(b.y, b.x) + b.zNode);  // görsel yörünge eğimi
+    b.trail.push({x:b.x, y:b.y, z:b.z});
+    if(b.trail.length > TRAIL_MAX) b.trail.shift();
+  }
+  /* --- 4) ikinci yarı vuruş (yeni konumlarda) + ışık demetleri --- */
+  for(let i=0;i<n;i++){
+    const b = bodies[i];
+    if(b.type === 'beam'){ fireBeam(b, h); continue; }
+    if(isFree(b)) continue;
+    const a = gravityAt(b.x, b.y, b, exag);
+    b.vx += a[0]*h*0.5; b.vy += a[1]*h*0.5;
+  }
+  /* --- 5) fotonlar: null geodezik, hız tam olarak c --- */
+  for(const p of photons){
+    const d = dominant(p);
+    if(d.M > 0){
+      const r = Math.max(d.r, SOFT_REL*d.M);
+      const a = LIGHT_F * G_GRAV * d.M / (r*r);          // ← ışık 2× yerçekimi
+      const ux = (p.x - d.hx)/r, uy = (p.y - d.hy)/r;
+      p.vx += a*ux*h; p.vy += a*uy*h;
+      const nv = Math.hypot(p.vx, p.vy);
+      if(nv > 0){ p.vx *= C_LIGHT/nv; p.vy *= C_LIGHT/nv; }   // ışık daima tam c
+      const inward = (p.x-d.hx)*p.vx/r + (p.y-d.hy)*p.vy/r;
+      if(d.r < RPH(d.M) && (inward < 0 || d.r < RPH(d.M)*0.97)) p.dead = true;  // ← foton küresi
+      p.z = 1/Math.sqrt(Math.max(1e-4, 1 - 2*d.M/Math.max(d.r, RS(d.M))));      // ← kırmızıya kayma
+    } else p.z = 1;
+    p.x += p.vx*h; p.y += p.vy*h; p.age += h;
+    p.trail.push(p.x, p.y);
+    if(p.trail.length > PH_TRAIL*2) p.trail.splice(0, 2);
+    if(p.age > PH_LIFE) p.dead = true;
+  }
+  clock += h;
+}
+
+/* yutma: kütleyi büyüt (hacim M^(1/3) ile artsın), cismi ufukta dondur — merkeze sokmaz */
+function eat(b, host){
+  if(b.eaten) return;
+  b.eaten = true; b.frozen = 1.6;                       // ← görsel donma süresi (duvar saniyesi)
+  if(host){
+    const dx = b.x - host.x, dy = b.y - host.y, r = Math.hypot(dx,dy) || 1;
+    const rr = RS(host.M)*1.06;                          // tam olarak ufuk üstünde dur
+    b.x = host.x + dx/r*rr; b.y = host.y + dy/r*rr;
+    /* Momentum korumalı birleşme: yutulan cismin momentumu kara deliğe geçer.
+       (Bunu yapmazsak kara delik gereksiz sürüklenir ve çevredeki yörüngeler bozulur.) */
+    const mh = host.M, m2 = mh + b.M;
+    host.vx = (mh*host.vx + b.M*b.vx)/m2;
+    host.vy = (mh*host.vy + b.M*b.vy)/m2;
+    host.Mtarget = m2;                                   // ← kara delik büyür
+    host.growFlash = 1;
+  }
+  b.vx = b.vy = 0;
+  b.trail.length = 0;
+  if(b.type !== 'photon') ui.toast(tf("m_eaten", {n: b.name || t("y_"+b.type)}));
+}
+/* yutma sonrası kütlenin/hacmin yumuşak büyümesi */
+function growBodies(dtWall){
+  const k = clamp(dtWall*0.9, 0, 1);
+  for(const b of bodies){
+    if(!b.alive) continue;
+    if(Math.abs(b.Mtarget - b.M) > 1e-13){
+      b.M = lerp(b.M, b.Mtarget, k);
+      b.rad = b.rad0 * Math.cbrt(b.M/b.M0);              // ← hacim ∝ kütle
+    }
+    if(b.growFlash > 0) b.growFlash = Math.max(0, b.growFlash - dtWall*1.4);
+  }
+}
+
+function fireBeam(b, h){
+  b.acc += h*b.rate/SIM_SEC;                             // ← atışlar "sim saniyesi" başına
+  let shots = Math.floor(b.acc);
+  if(shots <= 0) return;
+  b.acc -= shots; shots = Math.min(shots, 3);
+  for(let s=0;s<shots;s++) for(let k=0;k<b.count;k++){
+    /* Işınlar optik eksene doğru sıkıştırılır (u^1.7): merceklemenin en ilginç olduğu
+       b ≈ 3√3M…15M bandında yeterli çarpım parametresi çözünürlüğü kazanılır. */
+    const u = b.count > 1 ? k/(b.count-1)*2 - 1 : 0;
+    const a = b.dir + Math.sign(u)*Math.pow(Math.abs(u), 1.7)*b.spread + (Math.random()-0.5)*0.01;
+    spawnPhoton(b.x, b.y, Math.cos(a)*C_LIGHT, Math.sin(a)*C_LIGHT);
+  }
+}
+function spawnPhoton(x, y, vx, vy){
+  if(photons.length >= state.maxPhotons) photons.shift();
+  photons.push({ type:'photon', alive:true, x, y, vx, vy, z:1, age:0, dead:false, trail:[x,y], name:'Foton' });
+}
+
+/* ------------------------------- DURUM ----------------------------------- */
+const state = {
+  running:true, speed:1, tool:'select', preset:'solar',
+  rays:true, grid:true, vec:false, orbits:true, labels:true, rel:false,
+  tilt:0, sag:0.55, precess:1,
+  maxPhotons:300, quality:1, fps:60, follow:null, add:{}
+};
+const ui = {
+  _clampT: 0, _unstableT: 0,
+  clampFlash(){ const n = performance.now();
+    if(n - this._clampT > 4000){ this._clampT = n; this.toast(t("m_clamp")); } },
+  unstable(){ const n = performance.now();
+    if(n - this._unstableT > 4000){ this._unstableT = n; this.toast(t("m_unstable")); } },
+  toast(msg){ const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(this._tt); this._tt = setTimeout(()=>el.classList.remove('show'), 1600); }
+};
+
+/* ------------------------------- 6) ÇİZİM -------------------------------- */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d', {alpha:false});
+let W = 0, H = 0;
+function resize(){
+  const DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = cv.clientWidth; H = cv.clientHeight;
+  cv.width = Math.max(1, Math.round(W*DPR)); cv.height = Math.max(1, Math.round(H*DPR));
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resize);
+const cam = { x:0, y:0, zoom:1 };
+const FOCAL_K = 10, PERSP = 0.18;   // ← hafif perspektif (derinliğe duyarlılık)
+
+function project(x, y, z){
+  const a = state.tilt*Math.PI/180, ct = Math.cos(a), st = Math.sin(a);
+  const y2 = y*ct - z*st, z2 = y*st + z*ct;
+  const F = FOCAL_K*Math.max(H,200);
+  const persp = F / Math.max(F*0.35, F - z2*PERSP*Math.max(H,200));   // ← derinlik→boyut
+  return { x: W/2 + (x - cam.x)*cam.zoom*persp, y: H/2 + (y2 - cam.y*ct)*cam.zoom*persp, s: cam.zoom*persp, d: z2 };
+}
+function unproject(sx, sy){
+  const a = state.tilt*Math.PI/180, ct = Math.cos(a);
+  return { x: cam.x + (sx - W/2)/cam.zoom, y: cam.y + (sy - H/2)/(cam.zoom*ct) };
+}
+const cellSize = () => clamp(118/cam.zoom, 1.0, 6000);   // ← ızgara hücresi ≈ 118 ekran px
+
+const STARS = (() => { const a=[]; let s = 987654321;                       // deterministik yıldız alanı
+  const rnd = () => (s = (s*1103515245 + 12345) & 0x7fffffff)/0x7fffffff;
+  for(let i=0;i<520;i++) a.push({ u:rnd()*2-1, v:rnd()*2-1, r:0.4+rnd()*1.6, a:0.12+rnd()*0.5 });
+  return a; })();
+
+function drawBackground(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#060a16'); g.addColorStop(1,'#02040a');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  const px = -cam.x*cam.zoom*0.05, py = -cam.y*cam.zoom*0.05;
+  ctx.fillStyle = 'rgba(200,225,255,.45)';
+  for(const s of STARS){
+    let x = (s.u*W + px) % W, y = (s.v*H + py) % H;
+    if(x < 0) x += W; if(y < 0) y += H;
+    ctx.globalAlpha = s.a; ctx.fillRect(x, y, s.r, s.r);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* --- ızgara: kütleye göre çöker (koordinat çarpıtması) --- */
+function drawGrid(){
+  if(!state.grid) return;
+  const h = cellSize(), a = state.tilt*Math.PI/180, ct = Math.cos(a);
+  const halfW = W/2/cam.zoom/ct, halfH = H/2/cam.zoom;
+  const x0 = Math.floor((cam.x-halfW)/h)*h, y0 = Math.floor((cam.y-halfH)/h)*h;
+  const nx = Math.ceil(2*halfW/h)+1, ny = Math.ceil(2*halfH/h)+1;
+  if(nx > 120 || ny > 120) return;                      // ← aşırı uzaklaşınca ızgarayı at (fps kalkanı)
+  const infl = [];
+  for(const b of bodies){
+    if(!b.alive || b.M <= 0) continue;
+    infl.push({ b, R: SAG_W*Math.sqrt(b.M)*h + 2*h });  // ← görsel etki yarıçapı
+  }
+  const N = (nx+1)*(ny+1);
+  if(N > 16000) return;
+  const P = new Float32Array(N*2);
+  for(let j=0;j<=ny;j++) for(let i=0;i<=nx;i++){
+    let x = x0 + i*h, y = y0 + j*h;
+    for(const q of infl){
+      const dx = x - q.b.x, dy = y - q.b.y, r2 = dx*dx + dy*dy;
+      if(r2 > q.R*q.R) continue;
+      const r = Math.sqrt(r2) + 1e-6;
+      const mv = Math.sqrt(q.b.M);
+      const wid = SAG_W*mv*h, dep = SAG_D*mv*h*state.sag;   // ← Lorentzian çukur
+      const fall = dep * wid*wid / (r2 + wid*wid);
+      if(fall < 0.004*h) continue;
+      x += dx/r*fall; y += dy/r*fall;
+    }
+    const k = (j*(nx+1)+i)*2; P[k] = x; P[k+1] = y;
+  }
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(96,150,215,.17)';
+  for(let j=0;j<=ny;j++){ ctx.beginPath();
+    for(let i=0;i<=nx;i++){ const p = project(P[(j*(nx+1)+i)*2], P[(j*(nx+1)+i)*2+1], 0);
+      i ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); } ctx.stroke(); }
+  for(let i=0;i<=nx;i++){ ctx.beginPath();
+    for(let j=0;j<=ny;j++){ const p = project(P[(j*(nx+1)+i)*2], P[(j*(nx+1)+i)*2+1], 0);
+      j ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); } ctx.stroke(); }
+  // ızgara çubuğunun her 5 hücrede bir koyu tonu (okunabilirlik)
+  ctx.strokeStyle = 'rgba(120,190,255,.07)';
+  for(let i=0;i<=nx;i++) if(Math.round((x0+i*h)/h) % 5 === 0){ ctx.beginPath();
+    for(let j=0;j<=ny;j++){ const p = project(P[(j*(nx+1)+i)*2], P[(j*(nx+1)+i)*2+1], 0);
+      j ? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); } ctx.stroke(); }
+  void ct;
+}
+
+/* --- yörünge izleri --- */
+function drawTrails(){
+  if(!state.orbits) return;
+  ctx.lineWidth = 1.2;
+  for(const b of bodies){
+    if(b.trail.length < 4) continue;
+    ctx.strokeStyle = b.type === 'bh' ? 'rgba(186,142,255,.35)' : rgba(b.color, 0.40);
+    ctx.beginPath();
+    let s0 = false;
+    for(let i=0;i<b.trail.length;i++){
+      const q = b.trail[i], p = project(q.x, q.y, q.z);
+      if(!s0){ ctx.moveTo(p.x,p.y); s0 = true; } else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  }
+}
+/* --- foton izleri (kırmızıya kayma rengiyle) --- */
+function drawRays(){
+  if(!state.rays) return;
+  const stride = state.quality < 0.55 ? 4 : 1;           // ← fps düşünce iz seyreltilir
+  ctx.lineWidth = 1.1;
+  for(const p of photons){
+    const k = clamp((p.z - 1)/4, 0, 1);
+    const col = redden([255,246,205], k);
+    const al = clamp(0.9/Math.max(1, p.z*p.z*0.75), 0.02, 0.9);
+    ctx.strokeStyle = rgba(col, al);
+    ctx.beginPath();
+    const tr = p.trail;
+    for(let i=0;i<tr.length;i+=2*stride){
+      const s = project(tr[i], tr[i+1], 0);
+      if(i === 0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+    }
+    const hd = project(p.x, p.y, 0);
+    ctx.lineTo(hd.x, hd.y); ctx.stroke();
+    if(p.z < 4){ ctx.fillStyle = rgba(col, al*0.9); ctx.beginPath();
+      ctx.arc(hd.x, hd.y, 1.6 + (1 - Math.min(1,p.z/4)), 0, TAU); ctx.fill(); }
+  }
+}
+
+/* --- cisimler (derinliğe göre sıralı) --- */
+function drawBodies(){
+  const list = [];
+  for(const b of bodies){
+    if(!b.alive) continue;
+    list.push({ b, p: project(b.x, b.y, b.z) });
+  }
+  list.sort((a,c) => c.p.d - a.p.d);
+  for(const { b, p } of list){
+    /* Kızarmak FOTON kırmızı kaymasına bağlıdır: z = 1/√(1−2M/r) yalnızca potansiyele
+       bağlıdır, cismin hızına değil. (dτ/dt ise "donma" görselini sürer.) */
+    const red = clamp((b.zred - 1)*2.0, 0, 1);
+    const freeze = clamp((1 - (b.dil !== undefined ? b.dil : 1))*1.7, 0, 1);
+    const col = redden(b.color, red);
+    const R = Math.max(1.2, b.rad*p.s);
+    if(b.type === 'bh') drawBH(b, p, R, red);
+    else if(b.type === 'star') drawStar(b, p, R, col, red, freeze);
+    else if(b.type === 'beam') drawBeam(b, p, R);
+    else drawPlanet(b, p, R, col, red);
+  }
+}
+function drawBH(b, p, R, red){
+  const M = b.M, shPx = Math.max(2.5, SHADOW(M)*p.s);
+  const off = b.spin*SPIN_K*p.s;                        // ← çok hafif görsel çerçeve sürüklenmesi
+  const g = ctx.createRadialGradient(p.x + off, p.y, shPx*0.72, p.x, p.y, shPx*3.6);
+  g.addColorStop(0,'rgba(255,200,120,.50)'); g.addColorStop(.20,'rgba(255,140,80,.26)');
+  g.addColorStop(.55,'rgba(170,110,255,.11)'); g.addColorStop(1,'rgba(170,110,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(p.x + off, p.y, shPx*3.6, shPx*3.6*0.94, 0, 0, TAU); ctx.fill();
+  if(shPx > 9){                                          // foton küresi halkası
+    ctx.strokeStyle = 'rgba(255,205,140,.32)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(p.x, p.y, RPH(M)*p.s, 0, TAU); ctx.stroke();
+  }
+  ctx.fillStyle = '#01020a';                             // ← gölge = 3√3·M
+  ctx.beginPath(); ctx.arc(p.x, p.y, shPx, 0, TAU); ctx.fill();
+  if(b.growFlash > 0){                                   // yutma sonrası parlama
+    const R0 = shPx*(1 + 0.55*b.growFlash);
+    ctx.strokeStyle = rgba([255,220,170], b.growFlash*0.9); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, R0, 0, TAU); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,110,90,.7)'; ctx.lineWidth = 1.1;   // ← olay ufku = 2M
+  ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1, RS(M)*p.s), 0, TAU); ctx.stroke();
+  if(shPx > 9 && state.labels){
+    ctx.fillStyle = 'rgba(255,180,130,.8)'; ctx.font = '10px ui-monospace,monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(t('shadow')+' '+fmt(SHADOW(M))+'su', p.x + shPx + 5, p.y - 3);
+  }
+  void R; void red;
+}
+function drawStar(b, p, R, col, red, freeze){
+  const pulse = 1 + 0.04*Math.sin(clock*3 + b.id);
+  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, R*4.2*pulse);
+  g.addColorStop(0, rgba(col,1)); g.addColorStop(.26, rgba(col,.5)); g.addColorStop(1, rgba(col,0));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, R*4.2*pulse, 0, TAU); ctx.fill();
+  if(freeze > 0.25){                                      // ← donan cisim kırmızı halka ile işaretlenir
+    ctx.strokeStyle = `rgba(255,90,70,${(freeze-0.25)*0.9})`; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(p.x, p.y, R*1.8 + 2, 0, TAU); ctx.stroke();
+  }
+  ctx.fillStyle = rgba(col,.95); ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(1.1, R*0.62), 0, TAU); ctx.fill();
+  if(state.labels && R > 3.4){
+    ctx.fillStyle = rgba(col,.85); ctx.font = '10px ui-sans-serif,system-ui';
+    ctx.textAlign = 'center'; ctx.fillText(b.name, p.x, p.y - R*1.9 - 4);
+  }
+}
+function drawBeam(b, p, R){
+  const ct = Math.cos(state.tilt*Math.PI/180);
+  const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, R*7);
+  g.addColorStop(0,'rgba(255,255,225,1)'); g.addColorStop(.3,'rgba(255,225,140,.5)');
+  g.addColorStop(1,'rgba(255,200,90,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, R*7, 0, TAU); ctx.fill();
+  const L = 30, ex = p.x + Math.cos(b.dir)*L, ey = p.y + Math.sin(b.dir)*L*ct;
+  ctx.strokeStyle = 'rgba(255,230,160,.6)'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(ex, ey);
+  ctx.lineTo(ex - Math.cos(b.dir+0.5)*5, ey - Math.sin(b.dir+0.5)*5*ct);
+  ctx.moveTo(p.x, p.y); ctx.lineTo(ex - Math.cos(b.dir-0.5)*5, ey - Math.sin(b.dir-0.5)*5*ct);
+  ctx.stroke();
+}
+function drawPlanet(b, p, R, col, red){
+  /* Özel görelilik ipucu: hareket yönünde boy kısalması L = L₀·√(1−v²/c²) */
+  const v = Math.hypot(b.vx, b.vy);
+  const gam = v > 1e-9 ? Math.sqrt(Math.max(0, 1 - (v/C_LIGHT)*(v/C_LIGHT))) : 1;
+  const ang = Math.atan2(b.vy*Math.cos(state.tilt*Math.PI/180), b.vx);
+  ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(ang);
+  ctx.fillStyle = rgba(col, .96);
+  ctx.beginPath(); ctx.ellipse(0, 0, R, Math.max(R*0.16, R*gam), 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = rgba(col, .75);                          // ← hareket yönü göstergesi
+  ctx.beginPath(); ctx.moveTo(R*0.7, 0); ctx.lineTo(R*1.35, -R*0.24); ctx.lineTo(R*1.35, R*0.24); ctx.fill();
+  ctx.restore();
+  if(b.eaten){                                           // ← ufka yapışmış donmuş cisim
+    const k = clamp(1 - b.frozen/1.6, 0, 1);
+    ctx.strokeStyle = `rgba(255,90,70,${0.35+0.5*k})`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(p.x, p.y, R*1.6 + 3*(1-k), 0, TAU); ctx.stroke();
+  }
+  if(state.labels && R > 3.2){
+    ctx.fillStyle = rgba(col,.85); ctx.font = '10px ui-sans-serif,system-ui';
+    ctx.textAlign = 'center'; ctx.fillText(b.name, p.x, p.y - R*1.4 - 5);
+  }
+  void red;
+}
+/* hız vektörleri */
+function drawVectors(){
+  if(!state.vec) return;
+  const ct = Math.cos(state.tilt*Math.PI/180), L = 34;    // ← 1 c = 34 px referans
+  ctx.lineWidth = 1.4;
+  for(const b of bodies){
+    if(!b.alive || b.type === 'beam' || b.eaten) continue;
+    const p = project(b.x, b.y, b.z);
+    const x = p.x + b.vx/C_LIGHT*L, y = p.y + b.vy/C_LIGHT*L*ct;
+    ctx.strokeStyle = 'rgba(124,255,178,.8)';
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(x, y);
+    const a = Math.atan2(y-p.y, x-p.x);
+    ctx.lineTo(x - Math.cos(a-0.45)*5, y - Math.sin(a-0.45)*5);
+    ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(a+0.45)*5, y - Math.sin(a+0.45)*5);
+    ctx.stroke();
+    if(state.labels){
+      ctx.fillStyle = 'rgba(124,255,178,.9)'; ctx.font = '9px ui-monospace,monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText((Math.hypot(b.vx,b.vy)/C_LIGHT*100).toFixed(0)+'%c', x+4, y-3);
+    }
+  }
+}
+/* hız oku düzenleme tutamağı */
+function drawVelHandle(){
+  if(!selVelArm || !selVelBody) return;
+  const b = selVelBody, p = project(b.x, b.y, b.z), ct = Math.cos(state.tilt*Math.PI/180);
+  const L = 34;
+  const x = p.x + b.vx/C_LIGHT*L, y = p.y + b.vy/C_LIGHT*L*ct;
+  ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(x, y); ctx.stroke();
+  ctx.fillStyle = '#ffd166'; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, TAU); ctx.fill();
+  ctx.font = '11px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd166';
+  ctx.fillText((Math.hypot(b.vx,b.vy)/C_LIGHT*100).toFixed(0)+'%c', (p.x+x)/2, (p.y+y)/2 - 8);
+}
+/* seçili cismin yerel ışık konisi (c tavanının görsel hatırlatıcısı) */
+function drawLightCone(){
+  if(!state.rel || !selected || !selected.alive) return;
+  const b = selected;
+  const d = dominant(b);
+  if(d.M > 0 && d.r < 30*RS(d.M)) return;               // ufkun içinde anlamı yok
+  const p = project(b.x, b.y, b.z);
+  const rC = 18*p.s;                                     // ← yerel ışık konisi yarıçapı
+  ctx.strokeStyle = 'rgba(255,240,190,.30)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.ellipse(p.x, p.y, rC, rC*Math.cos(state.tilt*Math.PI/180), 0, 0, TAU); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,240,190,.55)'; ctx.font = '9px ui-monospace,monospace'; ctx.textAlign = 'left';
+  ctx.fillText('c', p.x + rC + 3, p.y - 2);
+}
+/* ekran-uzayı uyarı etiketleri */
+function drawWarnings(){
+  if(!selected || !selected.alive || selected.type === 'beam' || selected.eaten) return;
+  const d = dominant(selected);
+  if(d.M <= 0 || d.r > 400) return;
+  const p = project(selected.x, selected.y, selected.z);
+  let warn = null;
+  if(d.r < 3*RS(d.M))      warn = t('freezing');
+  else if(d.r < ISCO(d.M)) warn = t('spiralizing');
+  else if(d.r < 10*ISCO(d.M)) warn = t('strong');
+  if(!warn) return;
+  ctx.fillStyle = d.r < ISCO(d.M) ? 'rgba(255,140,120,.92)' : 'rgba(255,200,120,.8)';
+  ctx.font = '10px ui-monospace,monospace'; ctx.textAlign = 'center';
+  ctx.fillText(warn, p.x, p.y - 16);
+}
+/* ölçek çubuğu */
+function drawScaleBar(){
+  const h = cellSize();
+  let nice = 0;
+  for(let k=-1;k<=5;k++) for(const s of [1,2,5]){
+    const v = s*Math.pow(10,k);
+    if(v*cam.zoom > 62 && v*cam.zoom < 200) nice = v;
+  }
+  if(!nice) nice = Math.pow(10, Math.floor(Math.log10(h))+1);
+  document.getElementById('bar').style.width = (nice*cam.zoom).toFixed(0)+'px';
+  document.getElementById('barLbl').textContent = fmt(nice) + ' su';
+}
+
+/* ---------------------------- 7) KAMERA / GİRDİ -------------------------- */
+const ptrs = new Map();
+let dragMode = null, dragPrev = null, pinchD = 0;
+const CT = () => Math.cos(state.tilt*Math.PI/180);
+
+cv.addEventListener('pointerdown', ev => {
+  cv.setPointerCapture(ev.pointerId);
+  ptrs.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+  if(ptrs.size === 2){
+    const [a,b] = [...ptrs.values()];
+    pinchD = Math.hypot(a.x-b.x, a.y-b.y); dragMode = null; return;
+  }
+  // hız oku tutamak
+  if(selVelArm && selVelBody && selVelBody.alive){
+    const b = selVelBody, p = project(b.x, b.y, b.z);
+    const hx = p.x + b.vx/C_LIGHT*34, hy = p.y + b.vy/C_LIGHT*34*CT();
+    if(Math.hypot(ev.clientX-hx, ev.clientY-hy) < 18 || Math.hypot(ev.clientX-p.x, ev.clientY-p.y) < 22){
+      dragMode = 'vel'; dragPrev = {x:ev.clientX, y:ev.clientY}; return;
+    }
+  }
+  const w = unproject(ev.clientX, ev.clientY);
+  const hit = pick(ev.clientX, ev.clientY, w);
+  if(hit && state.tool === 'select'){ select(hit); }
+  else if(hit && state.tool === 'erase'){ removeBody(hit); }
+  else if(hit && state.tool === 'follow'){ state.follow = hit; }
+  else if(place(w)){ /* yerleştirildi */ }
+  dragMode = 'pan'; dragPrev = {x:ev.clientX, y:ev.clientY};
+});
+cv.addEventListener('pointermove', ev => {
+  if(!ptrs.has(ev.pointerId)) return;
+  ptrs.set(ev.pointerId, {x:ev.clientX, y:ev.clientY});
+  if(ptrs.size === 2){
+    const [a,b] = [...ptrs.values()];
+    const d = Math.hypot(a.x-b.x, a.y-b.y);
+    if(pinchD > 0) cam.zoom = clamp(cam.zoom*d/pinchD, 2e-4, 3e5);
+    pinchD = d; return;
+  }
+  if(dragMode === 'vel' && selVelBody && dragPrev){
+    const p = project(selVelBody.x, selVelBody.y, selVelBody.z), ct = CT();
+    let vx = (ev.clientX - p.x)/34*C_LIGHT;
+    let vy = (ev.clientY - p.y)/(34*ct)*C_LIGHT;
+    const sp = Math.hypot(vx, vy);
+    if(sp > V_MAX){ const k = V_MAX/sp; vx *= k; vy *= k; ui.clampFlash(); }   // ← c tavanı
+    selVelBody.vx = vx; selVelBody.vy = vy;
+    return;
+  }
+  if(dragMode === 'pan' && dragPrev){
+    cam.x -= (ev.clientX - dragPrev.x)/cam.zoom;
+    cam.y -= (ev.clientY - dragPrev.y)/(cam.zoom*CT());
+    state.follow = null;
+    dragPrev = {x:ev.clientX, y:ev.clientY};
+  }
+});
+function endPtr(ev){
+  if(dragMode === 'vel') selVelArm = false;              // ← hız oku bırakılınca serbest bırak
+  ptrs.delete(ev.pointerId); if(ptrs.size < 2) pinchD = 0; dragMode = null;
+}
+cv.addEventListener('pointerup', endPtr);
+cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  cam.zoom = clamp(cam.zoom*Math.exp(-ev.deltaY*0.0016), 2e-4, 3e5);
+}, {passive:false});
+cv.addEventListener('dblclick', ev => {
+  const w = unproject(ev.clientX, ev.clientY), hit = pick(ev.clientX, ev.clientY, w);
+  if(hit){ select(hit); cam.x = hit.x; cam.y = hit.y; }
+});
+function pick(sx, sy, w){
+  let best = null, bd = Infinity;
+  const test = (o, pr) => {
+    const p = pr || project(o.x, o.y, 0);
+    const R = Math.max(11, (o.rad || 0)*p.s*1.5);
+    const dd = Math.hypot(sx - p.x, sy - p.y);
+    if(dd < R && dd < bd){ bd = dd; best = o; }
+  };
+  for(const b of bodies) if(b.alive) test(b);
+  for(const p of photons) test(p, project(p.x, p.y, 0));
+  void w;
+  return best;
+}
+function place(w){
+  const tool = state.tool, M = state.add.M;
+  if(tool === 'bh'){
+    const b = mkBody('bh', w.x, w.y, {M: M !== undefined ? M : 6, name: t('y_bh')+' '+(bodies.length+1)});
+    bodies.push(b); select(b); cam.x = b.x; cam.y = b.y; return true;
+  }
+  if(tool === 'star'){
+    const M2 = M !== undefined ? M : 8;
+    const b = mkBody('star', w.x, w.y, {M:M2, temp: state.add.temp || 5200,
+      rad: clamp(2 + 3.2*Math.cbrt(M2), 1.5, 60), name: t('y_star')+' '+(bodies.length+1)});
+    bodies.push(b); select(b); return true;
+  }
+  if(tool === 'planet'){
+    const b = mkBody('planet', w.x, w.y, {M: M !== undefined ? M : 1e-5, rad: state.add.rad || 3,
+      color:[120,200,255], name: t('y_planet')+' '+(bodies.length+1)});
+    bodies.push(b); select(b); selVelArm = true; selVelBody = b;   // ← oku sürükle
+    return true;
+  }
+  if(tool === 'photon'){
+    // test fotonu: en yakın kütleye nişan al (yoksa +x yönünde)
+    let best = null, bd = Infinity;
+    for(const b of bodies){ if(!b.alive || b.M <= 0) continue;
+      const d = Math.hypot(b.x-w.x, b.y-w.y); if(d < bd){ bd = d; best = b; } }
+    const a = best ? Math.atan2(best.y-w.y, best.x-w.x)
+                   : (state.add.dir !== undefined ? state.add.dir : 0);
+    spawnPhoton(w.x, w.y, Math.cos(a)*C_LIGHT, Math.sin(a)*C_LIGHT);
+    return true;
+  }
+  if(tool === 'beam'){
+    const b = mkBody('beam', w.x, w.y, {spread: state.add.spread ?? 0.25, rate: state.add.rate ?? 6,
+      count: state.add.count ?? 3, dir: state.add.dir ?? 0, name: t('y_beam')+' '+(bodies.length+1)});
+    bodies.push(b); select(b); return true;
+  }
+  return false;
+}
+function removeBody(b){
+  bodies = bodies.filter(o => o !== b);
+  photons = photons.filter(o => o !== b);
+  if(selected === b) selected = null;
+  if(selVelBody === b){ selVelArm = false; selVelBody = null; }
+  renderInspector();
+}
+function select(b){ selected = b; renderInspector(); }
+
+/* ------------------------------- 8) ARAYÜZ ------------------------------- */
+const $ = s => document.querySelector(s);
+const massToSlider = M => Math.round(1000*(Math.log10(clamp(M,1e-6,1e3))+6)/9);
+const sliderToMass = v => Math.pow(10, v/1000*9 - 6);
+
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+  buildToolOpts(); renderInspector(); updateStats();
+}
+function buildToolOpts(){
+  const box = document.getElementById('toolOpts'), tool = state.tool, A = state.add;
+  const sl = (lab, id, min, max, step, val, unit) =>
+    `<label class="fld"><span>${lab}</span><b id="v_${id}">${unit === '' ? val : fmt(val,2)+unit}</b>
+      <input id="s_${id}" type="range" min="${min}" max="${max}" step="${step}" value="${val}"></label>`;
+  let h = '';
+  if(tool === 'bh' || tool === 'star' || tool === 'planet'){
+    const def = tool === 'bh' ? 6 : tool === 'star' ? 8 : 1e-5;
+    const M = A.M !== undefined ? A.M : def;
+    h += `<label class="fld"><span>${t('o_mass')}</span><b id="v_M">${fmt(M,3)} M</b>
+      <input id="s_M" type="range" min="0" max="1000" step="1" value="${massToSlider(M)}"></label>`;
+    if(tool === 'planet') h += sl(t('o_radius'), 'rad', 1, 30, 0.5, A.rad || 3, ' su');
+    if(tool === 'star')   h += sl(t('o_temp'), 'temp', 1500, 12000, 100, A.temp || 5200, ' K');
+  } else if(tool === 'beam'){
+    h += sl(t('o_spread'), 'spread', 1, 180, 1, Math.round((A.spread ?? 0.25)*100), '°');
+    h += sl(t('o_count'),  'count',  1, 9, 1, A.count ?? 3, '');
+    h += sl(t('o_rate'),   'rate',  1, 40, 1, A.rate ?? 6, ' /sn');
+    h += sl(t('o_dir'),    'dir',   -180, 180, 1, Math.round((A.dir ?? 0)*180/Math.PI), '°');
+  } else if(tool === 'select' || tool === 'follow'){
+    h += sl(t('o_exag'), 'exag', 1, 300, 1, Math.round(state.precess*100), '%');
+    h += `<div class="note">${t('h2')}</div>`;
+  } else {
+    h += `<div class="note">${tool === 'erase' ? t('h3') : t('h5')}</div>`;
+  }
+  box.innerHTML = h;
+  const bind = (id, fn) => { const el = document.getElementById('s_'+id); if(el)
+    el.addEventListener('input', () => fn(parseFloat(el.value), el)); };
+  const lbl = (id, s) => { const l = document.getElementById('v_'+id); if(l) l.textContent = s; };
+  bind('M',     v => { A.M = sliderToMass(v); lbl('M', fmt(A.M,3)+' M'); });
+  bind('rad',   v => { A.rad = v;     lbl('rad', fmt(v,2)+' su'); });
+  bind('temp',  v => { A.temp = v;    lbl('temp', v+' K'); });
+  bind('spread',v => { A.spread = v/100; lbl('spread', v+'°'); });
+  bind('rate',  v => { A.rate = v;    lbl('rate', v+' /sn'); });
+  bind('count', v => { A.count = v|0;  lbl('count', v|0); });
+  bind('dir',   v => { A.dir = v*Math.PI/180; lbl('dir', v+'°'); });
+  bind('exag',  v => { state.precess = v/100; lbl('exag', v+'%'); updateStats(); });
+}
+
+function renderInspector(){
+  const b = selected, el = document.getElementById('insBody');
+  if(!b){ el.innerHTML = `<div class="note">${t('ins_none')}</div>`; return; }
+  const isPhoton = b.type === 'photon';
+  const rows = [], tr = (k, v) => rows.push(`<tr><td class="k">${k}</td><td class="n">${v}</td></tr>`);
+  tr(t('i_type'), `<span class="tag">${t('y_'+b.type)}</span>`);
+  if(!isPhoton) tr(t('i_mass'), b.M > 0 ? fmt(b.M,4)+' M' : t('i_none2'));
+  if(b.type === 'bh' && b.M > 0){
+    tr(t('event')+' 2M', fmt(RS(b.M))+' su');
+    tr(t('sphere')+' 3M', fmt(RPH(b.M))+' su');
+    tr('ISCO 6M', fmt(ISCO(b.M))+' su');
+    tr(t('shadow')+' 3√3M', fmt(SHADOW(b.M))+' su');
+  }
+  if(!isPhoton && b.type !== 'beam'){
+    const v = Math.hypot(b.vx, b.vy);
+    tr(t('i_r'), fmt(b.rad,1)+' su');
+    tr(t('i_v'), fmt(v/C_LIGHT,3)+' c ('+(v/C_LIGHT*100).toFixed(0)+'%)');
+    tr(t('i_gamma'), fmt(Math.sqrt(Math.max(0,1-(v/C_LIGHT)*(v/C_LIGHT))),3));
+  }
+  tr(t('i_tau'), fmtT(b.tau || 0));
+  tr(t('i_t'), fmtT(clock));
+  if(!isPhoton && b.type !== 'beam')
+    tr(t('i_dil'), fmt(b.dil !== undefined ? b.dil : 1, 4)+'  (1:'+fmt(1/Math.max(b.dil||1,1e-4),2)+')');
+  if(isPhoton) tr(t('i_z'), fmt(b.z || 1, 2));
+  if(!isPhoton){
+    const d = dominant(b);
+    if(d.M > 0) tr(t('i_near'), fmt(d.r)+' su = '+(d.r/RS(d.M)).toFixed(2)+' rs');
+  }
+  let html = `<table>${rows.join('')}</table>`;
+  if(!isPhoton && b.type !== 'beam' && b.alive){
+    html += `<label class="fld"><span>${t('i_editing')} · ${t('i_mass')}</span><b>${fmt(b.M,4)}</b>
+      <input id="e_M" type="range" min="0" max="1000" step="1" value="${massToSlider(b.M)}"></label>`;
+    html += `<label class="fld"><span>${t('i_editing')} · ${t('i_v')}</span><b>${fmt(Math.hypot(b.vx,b.vy)/C_LIGHT,3)} c</b>
+      <input id="e_v" type="range" min="0" max="99" step="1" value="${Math.round(Math.hypot(b.vx,b.vy)/C_LIGHT*100)}"></label>`;
+    html += `<label class="fld"><span>${t('i_editing')} · ${t('i_r')}</span><b>${fmt(b.rad,1)} su</b>
+      <input id="e_r" type="range" min="1" max="60" step="0.5" value="${b.rad}"></label>`;
+    html += `<div class="row" style="margin-top:4px"><button id="e_vel">${t('i_v')} →</button>
+      <button id="e_del">${t('i_del')}</button></div>`;
+  }
+  const note = precessionNote(b);
+  if(note) html += `<div class="note">${note}</div>`;
+  el.innerHTML = html;
+  const em = document.getElementById('e_M');
+  if(em) em.addEventListener('input', () => {
+    const M = sliderToMass(parseFloat(em.value));
+    b.M = b.Mtarget = M;
+    if(b.type === 'bh'){ b.rad = Math.max(2.5, 6*Math.cbrt(M)); b.M0 = M; b.rad0 = b.rad; }
+    if(b.type === 'star'){ b.rad = clamp(2+3.2*Math.cbrt(M),1.5,60); b.M0 = M; b.rad0 = b.rad; }
+    renderInspector();
+  });
+  const eV = document.getElementById('e_v');
+  if(eV) eV.addEventListener('input', () => {
+    const sp = parseFloat(eV.value)/100*C_LIGHT, cur = Math.hypot(b.vx,b.vy) || 1e-9;
+    const k = sp/cur; b.vx *= k; b.vy *= k; renderInspector();
+  });
+  const eR = document.getElementById('e_r');
+  if(eR) eR.addEventListener('input', () => { b.rad = parseFloat(eR.value); b.rad0 = b.rad; renderInspector(); });
+  const eD = document.getElementById('e_del'); if(eD) eD.addEventListener('click', () => removeBody(b));
+  const eB = document.getElementById('e_vel'); if(eB) eB.addEventListener('click', () => { selVelArm = true; selVelBody = b; });
+}
+/* Güneş sistemi dışındaki cisimler için günberi sapması notu — abartma katsayısı açıkça yazılır */
+function precessionNote(b){
+  if(!b || b.type === 'beam' || b.type === 'photon' || !b.alive) return '';
+  const d = dominant(b);
+  if(d.M <= 0 || d.r <= 0) return '';
+  const ecc = 0.206;
+  const full = 6*Math.PI*d.M/(d.r*(1 - ecc*ecc));       // ≈ 6πGM/(c²a(1−e²))  [radyan]
+  const perDeg = full*state.precess*180/Math.PI;         // uygulanan sapma (°/yörünge)
+  const exag = perDeg/0.1028;                             // gerçek Merkür: 0.1028°/yörünge
+  return t('i_a') + ': ' + degStr(perDeg) + '/yörünge · ' + t('o_exag') + ' ×' + fmt(exag,1)
+       + (state.preset === 'solar' ? ' · ' + t('i_a2') : '');
+}
+function updateStats(){
+  const s = state.follow ? t('following') : (state.running ? '' : t('paused'));
+  document.getElementById('stats').innerHTML =
+    tf('stats', {n: bodies.filter(b=>b.alive).length, p: photons.length, f: Math.round(state.fps),
+                 s: s ? '· ' + s : ''});
+}
+
+/* --------------------------- 8b) PRESET'LER ------------------------------ */
+function clearAll(){ bodies = []; photons = []; selected = null; selVelBody = null; selVelArm = false; clock = 0; }
+/* Yörünge hızı: vis-viva  v² = GM(2/r − 1/a)  → Kepler dönem oranları T ∝ a^{3/2} doğal çıkar */
+function putOrbit(bt, a, e, phase, incDeg, M){
+  const r = a*(1 - e*Math.cos(phase));
+  const v = Math.sqrt(G_GRAV*M*(2/r - 1/a));
+  bt.x = Math.cos(phase)*r; bt.y = Math.sin(phase)*r;
+  bt.vx = -Math.sin(phase)*v; bt.vy = Math.cos(phase)*v;
+  const inc = incDeg*Math.PI/180;
+  bt.zAmp = a*Math.sin(inc); bt.zNode = 0;              // ← 3B eğim yalnızca görsel
+  bt.z = bt.zAmp*Math.sin(phase);
+  bt.trail.length = 0;
+  return bt;
+}
+const PRESETS = {
+  solar(){
+    clearAll();
+    const M = 1;                                          // Güneş kütlesi (bu birimlerde)
+    const sun = mkBody('star', 0, 0, {M, temp:5778, rad:7, name: LANG==='tr'?'Güneş':LANG==='de'?'Sonne':'Sun'});
+    bodies.push(sun);
+    /* Güneş sistemi: yarıçaplar görsel okunabilirlik için sıkıştırıldı (a ∝ a_AU^0.6),
+       dönemler Kepler yasasından gelir (T ∝ a^{3/2}) ve yörüngeler kararlıdır.
+       Gerçek kütle oranları korunur (Merkür 1.66e-5 M☉ … Neptün 5.15e-5 M☉). */
+    const S = 34, P = 0.6;                                // ← 1 AU = 34 su ; sıkıştırma üssü 0.6
+    const def = [
+      // ad      a_AU    e     faz   eğim  M/M☉      renk          yarıçap
+      ['mercury',0.387,0.2056, 0.35, 7.00, 1.66e-5, PAL.mercury, 1.9],
+      ['venus',  0.723,0.0068, 1.90, 3.40, 2.99e-6, PAL.venus,   2.6],
+      ['earth',  1.000,0.0167, 0.00, 0.00, 3.00e-6, PAL.earth,   3.0],
+      ['mars',   1.524,0.0934, 2.40, 1.85, 3.23e-7, PAL.mars,    2.1],
+      ['jupiter',5.203,0.0484,3.60, 1.30, 9.55e-4, PAL.jupiter, 6.6],
+      ['saturn', 9.537,0.0565, 1.10, 2.50, 2.86e-4, PAL.saturn,  5.6],
+      ['uranus',19.19,0.0457, 4.40, 0.80, 4.37e-5, PAL.uranus,  4.3],
+      ['neptune',30.07,0.0086,2.00, 1.80, 5.15e-5, PAL.neptune, 4.1]
+    ];
+    const nm = {mercury:['Merkür','Mercury','Merkur'], venus:['Venüs','Venus','Venus'],
+      earth:['Dünya','Earth','Erde'], mars:['Mars','Mars','Mars'],
+      jupiter:['Jüpiter','Jupiter','Jupiter'], saturn:['Satürn','Saturn','Saturn'],
+      uranus:['Uranüs','Uranus','Uranus'], neptune:['Neptün','Neptune','Neptun']};
+    const li = LANG === 'tr' ? 0 : LANG === 'de' ? 2 : 1;
+    for(const [key, au, e, ph, inc, mm, col, rr] of def){
+      const b = mkBody('planet', 0, 0, {M: M*mm, rad: rr, color: col, name: nm[key][li]});
+      putOrbit(b, S*Math.pow(au, P), e, ph, inc, M);
+      bodies.push(b);
+    }
+    state.precess = 0.06;    // ← abartılmış Merkür sapması (≈3.4°/yörünge, ×34); etiketlenir
+    state.speed = 1; cam.zoom = 4.4; cam.x = 0; cam.y = 0; state.tilt = 0; state.sag = 0.35;
+    state.add = {};
+  },
+  binary(){
+    clearAll();
+    const M = 2, s = 60;                                  // rs = 4 · rph = 6 · ISCO = 12
+    for(const sgn of [1, -1]){
+      const b = mkBody('bh', sgn*s/2, 0, {M, rad: 6*Math.cbrt(M), spin: 0.45, name: 'BH-' + (sgn > 0 ? 'A' : 'B')});
+      /* Eşit kütleli ikili: her biri kütle merkezinin etrafında s/2 yarıçapında döner.
+         Dairesel hız v = √(GM/2s)  (2v²/s = GM/s²). √(GM/r) DEĞİL — o sabit merkez içindir
+         ve ikiliyi iki kat hızla fırlatırdı. 1PN düzeltmesi de hıza katılır. */
+      const vN = Math.sqrt(G_GRAV*M/(2*s));
+      const corr = 1 + 3*0.5*Math.pow(2*s*vN, 2)/(s*s);   // ← 1PN: v² = GM/2s · (1 + 3·exag·h²/s²)
+      b.vx = 0; b.vy = sgn*vN*Math.sqrt(corr);
+      bodies.push(b);
+    }
+    /* Arka plandaki uzak yıldız: ikiliyi bozmasın diye kinematik (fixed) ve küçük kütleli. */
+    bodies.push(mkBody('star', -104, 40, {M:0.3, temp:4700, rad:3.4, fixed:true,
+      name: LANG==='tr'?'Yıldız':LANG==='de'?'Stern':'Star'}));
+    bodies.push(mkBody('beam', -86, -6, {spread:0.34, rate:12, count:5, dir:0.03,
+      name: LANG==='tr'?'Işık':'Light'}));
+    state.precess = 0.5; state.speed = 1; cam.zoom = 5.5; cam.x = 0; cam.y = 0;
+    state.tilt = 0; state.sag = 0.9; state.add = {};
+  },
+  lensing(){
+    clearAll();
+    const M = 1;                                          // ← ufuk 2 su, gölge 5.20 su
+    bodies.push(mkBody('bh', 0, 0, {M, rad: 6, spin: 0.6,
+      name: LANG==='tr'?'Kara delik':LANG==='de'?'Schwarzes Loch':'Black hole'}));
+    /* Uzak ışık kaynağı: kinematik (fixed) + ihmal edilebilir kütle → düşmez, mercekleme
+       düzeni bozulmaz; bütçe sapma tamamen kara deliğindendir. */
+    bodies.push(mkBody('star', -86, 0, {M:2e-3, temp:4900, rad:4.5, fixed:true,
+      name: LANG==='tr'?'Işık kaynağı':LANG==='de'?'Lichtquelle':'Light source'}));
+    /* Tüm çarpım parametrelerine yayılan demet: b < 3√3M = 5.2 su → gölge (yutulur),
+       b ≈ 5…25 su → 4M/b sapmasıyla iki yana kırılır, iki görüntü doğar (Einstein halkası). */
+    bodies.push(mkBody('beam', -84, 0, {spread:0.95, rate:9, count:15, dir:0,
+      name: LANG==='tr'?'Demet':'Fan'}));
+    state.precess = 1; state.speed = 1; cam.zoom = 8.5; cam.x = -14; cam.y = 0;
+    state.tilt = 0; state.sag = 1.0; state.add = {};
+  },
+  rel(){
+    clearAll();
+    const M = 3;                                          // rs = 6 · rph = 9 · ISCO = 18
+    const bh = mkBody('bh', 0, 0, {M, rad: 6*Math.cbrt(M), spin: 0.5, name: LANG==='tr'?'Kara delik':LANG==='de'?'Schwarzes Loch':'Black hole'});
+    bodies.push(bh);
+    // 1) ışık demeti: mercekleme + kırmızıya kayma (gölge kenarına yakın ışınlar)
+    bodies.push(mkBody('beam', -62, -22, {spread:0.55, rate:18, count:7, dir:0.06, name: LANG==='tr'?'Işık':'Light'}));
+    // 2) ISCO (18) içindeki cisim: içe spiraller, kızarır, donup yutulur → kara delik büyür
+    //    Kütle oranı seçilerek ters yönlü tepki (recoil) bastırıldı: kara delik yerinde kalır.
+    const a = mkBody('planet', 0, 0, {M:0.12, rad:3.2, color:[255,150,90],
+      name: LANG==='tr'?'Yutulacak cisim':LANG==='de'?'Zu schluckender Körper':'Doomed body'});
+    putOrbit(a, 12.5, 0.08, 1.0, 8, M); bodies.push(a);
+    /* Baş momentumu sıfırla: eşlik hareketliyken kara delik duruyorsa kütle merkezi
+       0.04c ile sürüklenir ve tüm sahne dağılır. Karşıt kick atılır. */
+    bh.vx -= a.M*a.vx/(bh.M + a.M);  bh.vy -= a.M*a.vy/(bh.M + a.M);
+    // 3) kararlı yörünge: günberi sapması ~14°/yörünge (abartmalı, etiketli).
+    //    NOT: bu yörünge yutma sırasındaki (küçük) ters yönlü tepkiye duyarlıdır; Güneş
+    //    Sistemi preset'i günberi sapması için daha uzun ömürlü bir sahne sunar.
+    const b = mkBody('planet', 0, 0, {M:1e-4, rad:3.4, color:[180,140,255], name: LANG==='tr'?'Yörünge':'Orbit'});
+    putOrbit(b, 90, 0.30, 0.4, 14, M); bodies.push(b);
+    // 4) düz geçiş 0.85c: boy kısalması L/L₀ = 0.53, yutulmaz
+    const c = mkBody('planet', -130, 58, {M:1e-4, rad:4.6, color:[255,190,120], name: LANG==='tr'?'Hızlı geçiş':LANG==='de'?'Schneller Vorbeiflug':'Fast flyby'});
+    c.vx = 0.85*C_LIGHT; c.vy = -0.05*C_LIGHT; c.zAmp = 0; bodies.push(c);
+    state.precess = 0.35; state.speed = 0.25; cam.zoom = 3.2; cam.x = 0; cam.y = 0;
+    state.tilt = 30; state.sag = 1.0; state.add = {};
+  },
+  lab(){
+    clearAll();
+    state.precess = 1; state.speed = 1; cam.zoom = 6; cam.x = 0; cam.y = 0;
+    state.tilt = 0; state.sag = 0.55; state.add = {};
+  }
+};
+function loadPreset(name){
+  state.preset = name; state.follow = null;
+  (PRESETS[name] || PRESETS.lab)();
+  document.getElementById('s_tilt').value = state.tilt;
+  document.getElementById('v_tilt').textContent = state.tilt.toFixed(0)+'°';
+  document.getElementById('s_sag').value = Math.round(state.sag*100);
+  document.getElementById('v_sag').textContent = state.sag.toFixed(2);
+  document.querySelectorAll('#speeds button').forEach(b =>
+    b.classList.toggle('on', parseFloat(b.dataset.s) === state.speed));
+  buildToolOpts(); renderInspector();
+}
+
+/* ------------------------------- 9) DÖNGÜ -------------------------------- */
+let lastT = performance.now(), fpsEMA = 60;
+function frame(now){
+  const dtWall = Math.min(0.05, (now - lastT)/1000);    // ← sekme değişiminde sıçramayı engelle
+  lastT = now;
+  fpsEMA = lerp(fpsEMA, 1/Math.max(dtWall,1e-3), 0.08);
+  state.fps = fpsEMA;
+
+  /* Uyarlanabilir kalite: 60fps hedefi. Yetersizse fotyon sayısını/iz seyreltmesini kıs,
+     ufku ve merceklemeyi ASLA feda etme. */
+  if(dtWall > 0.027 && state.quality > 0.3) state.quality -= 0.012;
+  else if(dtWall < 0.017 && state.quality < 1) state.quality += 0.005;
+  state.maxPhotons = Math.round(lerp(90, 340, state.quality));
+
+  if(state.running){
+    const dtSim = dtWall * BASE_RATE * state.speed;     // ← duvar saati → simülasyon zamanı
+    const n = substepsFor(dtSim);
+    if(n >= MAX_SUB && bodies.length > 14) ui.unstable();
+    const h = dtSim/n;
+    for(let s=0;s<n;s++) integrate(h);
+    growBodies(dtWall);
+    photons = photons.filter(p => !p.dead);
+    for(const b of bodies) if(b.eaten) b.frozen -= dtWall;    // ← donma duvar saatinde ilerler
+    bodies = bodies.filter(b => !(b.eaten && b.frozen <= 0));// donan cisim 1.6 sn sonra kaybolur
+    if(selected && selected.eaten && selected.frozen <= 0){ selected = null; renderInspector(); }
+  }
+  if(state.follow){                                      // kamera takibi
+    if(state.follow.alive){ cam.x = state.follow.x; cam.y = state.follow.y; }
+    else state.follow = null;
+  }
+  draw(); drawScaleBar();
+  if(selected && now - inspT > 140){ inspT = now; renderInspector(); }  // ← panel ~7fps
+  if(now - statsT > 200){ statsT = now; updateStats(); }
+  requestAnimationFrame(frame);
+}
+let inspT = 0, statsT = 0;
+
+/* ------------------------------ ÇİZİM AKIŞI ------------------------------ */
+function draw(){
+  drawBackground();
+  drawGrid();
+  drawTrails();
+  drawRays();
+  drawBodies();
+  drawLightCone();
+  drawVectors();
+  drawVelHandle();
+  drawWarnings();
+}
+
+/* ------------------------------- OLAYLAR --------------------------------- */
+document.querySelectorAll('#toolGrid button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tool = btn.dataset.tool;
+    if(tool === 'follow'){                               // takip bir açık/kapalı anahtarı
+      state.follow = (state.follow || selected) || null;
+      if(!state.follow) ui.toast(t('m_sel'));
+      btn.classList.toggle('on', !!state.follow);
+      return;
+    }
+    document.querySelectorAll('#toolGrid button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    state.tool = tool;
+    if(tool !== 'select' && tool !== 'follow') selVelArm = false;
+    buildToolOpts();
+  });
+});
+$('#play').addEventListener('click', () => {
+  state.running = !state.running;
+  $('#play').textContent = state.running ? t('pause') : t('play');
+  $('#play').classList.toggle('on', !state.running);
+});
+$('#speeds').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if(!b) return;
+  state.speed = parseFloat(b.dataset.s);
+  $('#speeds').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+});
+$('#preset').addEventListener('change', ev => loadPreset(ev.target.value));
+document.querySelectorAll('.chk').forEach(el => {
+  el.addEventListener('click', () => {
+    const k = el.dataset.t;
+    state[k] = !state[k];
+    el.classList.toggle('on', state[k]);
+  });
+});
+$('#s_tilt').addEventListener('input', e => {
+  state.tilt = parseFloat(e.target.value);
+  $('#v_tilt').textContent = state.tilt.toFixed(0)+'°';
+});
+$('#s_sag').addEventListener('input', e => {
+  state.sag = parseFloat(e.target.value)/100;
+  $('#v_sag').textContent = state.sag.toFixed(2);
+});
+$('#lang').addEventListener('change', e => {
+  LANG = e.target.value;
+  const keep = state.preset; loadPreset(keep); applyLang();
+  $('#preset').value = keep;
+});
+$('#helpBtn').addEventListener('click', () => $('#helpBox').classList.toggle('show'));
+$('#helpClose').addEventListener('click', () => $('#helpBox').classList.remove('show'));
+window.addEventListener('keydown', e => {
+  const tg = e.target.tagName;
+  if(tg === 'INPUT' || tg === 'SELECT') return;
+  const k = e.key.toLowerCase();
+  if(k === ' '){ e.preventDefault(); $('#play').click(); }
+  else if(k === 'r'){ loadPreset(state.preset); }
+  else if(k === 'g'){ document.querySelector('[data-t=grid]').click(); }
+  else if(k === 'v'){ document.querySelector('[data-t=vec]').click(); }
+  else if(k === 'h'){ $('#helpBox').classList.toggle('show'); }
+  else if(k === 'delete' || k === 'backspace'){ if(selected) removeBody(selected); }
+  else if(k >= '1' && k <= '8'){ const b = document.querySelectorAll('#toolGrid button')[+k-1]; if(b) b.click(); }
+});
+
+/* ------------------------------- BAŞLAT ---------------------------------- */
+resize();
+loadPreset('solar');
+applyLang();
+$('#play').textContent = t('pause');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
